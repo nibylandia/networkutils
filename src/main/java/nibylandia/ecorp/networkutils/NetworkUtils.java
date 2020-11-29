@@ -23,19 +23,48 @@ import nibylandia.ecorp.networkutils.exception.MovedStatusException;
 import nibylandia.ecorp.networkutils.exception.NonOkStatusException;
 import nibylandia.ecorp.networkutils.exception.NotFoundStatusException;
 
+/**
+ * Network utilities for http traffic.
+ */
 public final class NetworkUtils {
 	private static HttpClient CLIENT = HttpClient.newHttpClient();
 
 	private NetworkUtils() {}
 	
+	/**
+	 * Creates a new underlying HttpClient.
+	 * This seems to be necessary in cases the maximum number of open streams is reached and the underlying implementation cannot cope with it.
+	 * Usually should the server inform the client on the maximum number of possible open streams, but in some cases it does not work and
+	 * it is not clear whether the server is responsible for that or the JVM. You just get an 'too many concurrent streams' error.
+	 */
 	public static void renewHttpClient() {
 		CLIENT = HttpClient.newHttpClient();
 	}
 	
+	/**
+	 * Creates a new web socket builder related to the underlying HttpClient.
+	 * @return a new web socket builder
+	 */
 	public static WebSocket.Builder getWebsocketBuilder() {
 		return CLIENT.newWebSocketBuilder();
 	}
 	
+	/**
+	 * Performs a GET request on the given URI, buffers the whole response and returns it as a string.
+	 * Use with caution as the whole response will be held in memory.
+	 * @param uri see {@link #getInputStream(URI, String, boolean, boolean, boolean, boolean, String, String)}
+	 * @param cookies see {@link #getInputStream(URI, String, boolean, boolean, boolean, boolean, String, String)}
+	 * @param acceptAnything see {@link #getInputStream(URI, String, boolean, boolean, boolean, boolean, String, String)}
+	 * @param doNotTrack see {@link #getInputStream(URI, String, boolean, boolean, boolean, boolean, String, String)}
+	 * @param upgradeInsecureRequests see {@link #getInputStream(URI, String, boolean, boolean, boolean, boolean, String, String)}
+	 * @param teTrailers see {@link #getInputStream(URI, String, boolean, boolean, boolean, boolean, String, String)}
+	 * @param origin see {@link #getInputStream(URI, String, boolean, boolean, boolean, boolean, String, String)}
+	 * @param referer see {@link #getInputStream(URI, String, boolean, boolean, boolean, boolean, String, String)}
+	 * @return a string containing the whole response from the server, assuming an UTF-8 encoding
+	 * @throws IOException see {@link #getInputStream(URI, String, boolean, boolean, boolean, boolean, String, String)}
+	 * @throws InterruptedException see {@link #getInputStream(URI, String, boolean, boolean, boolean, boolean, String, String)}
+	 * @throws NonOkStatusException see {@link #getInputStream(URI, String, boolean, boolean, boolean, boolean, String, String)}
+	 */
 	public static StringBuilder getString(URI uri, String cookies, boolean acceptAnything, boolean doNotTrack, boolean upgradeInsecureRequests, boolean teTrailers, String origin, String referer) throws IOException, InterruptedException, NonOkStatusException {
 		StringBuilder result = new StringBuilder();
 
@@ -54,6 +83,21 @@ public final class NetworkUtils {
 		return result;
 	}
 	
+	/**
+	 * Performs a GET request on the given URI and returns an InputStream for reading the server's response.
+	 * @param uri URI to be requested from the server.
+	 * @param cookies Value of the Cookie header or null for none.
+	 * @param acceptAnything True for accepting \*\/\*, false for accepting html, xml and webp only.
+	 * @param doNotTrack True for a DNT header, false for none.
+	 * @param upgradeInsecureRequests True for Update-Insecure-Requests header, false for none. 
+	 * @param teTrailers True for TE Trailers header, false for none.
+	 * @param origin Value of the Origin header or null for none.
+	 * @param referer Value of the Referer header or null for none.
+	 * @return InputStream for reading the server's request, possibly encoded - see {@link #getContentEncoding(HttpResponse)}.
+	 * @throws IOException In case of an I/O error on the network level. 
+	 * @throws InterruptedException In case the thread has been interrupted.
+	 * @throws NonOkStatusException In case a non-200 response has been returned from the server.
+	 */
 	public static HttpResponse<InputStream> getInputStream(URI uri, String cookies, boolean acceptAnything, boolean doNotTrack, boolean upgradeInsecureRequests, boolean teTrailers, String origin, String referer) throws IOException, InterruptedException, NonOkStatusException {
 		HttpRequest.Builder builder = HttpRequest.newBuilder(uri)
 			.version(Version.HTTP_2)
@@ -85,9 +129,6 @@ public final class NetworkUtils {
 			builder.header("Cookie", cookies);
 		}
 		
-		//.header("Cookie", "__cfduid=d9b18f21565c18c240d5305f110057adf1591614606; csrftoken=TiwmszcyH4ZCMGlpzBlvdJ1trmCNiMmi8Royw3hdHh5xn4otio9COU8qtwLTrjIx; stcki="VbMkPs=0"; affkey="eJyrVipSslJQUqoFAAwfAk0="; sbr="sec:sbr69e13ea0-5315-4bed-81ae-f02a8ecd14fe:1jiFfK:fHY_ykqAJNqMgA4lX0qR35_ooBs"; dwf_s_a=True; __cf_bm=38f06a5027be484d80424c3ec1416eae42c3b8a4-1591614606-1800-ATmHB7jQp2v3yTD/tKJdGGAc5mrQRR9kUJ+w35QdcX11Fnl6Qu6CMuLPNS5ll4sqE8buXyu+uZftxv6iOSo9884=; xaduuid=33118a43-43fd-43c9-b0ee-b5b8ec09e2a0; __utfpp="f:trnxf08d860f47dd7a53ae3329a81aea70bd:1jiFfM:dAT2aID6GcJUG63xikBhe-Hc50A"; agreeterms=1; tbu_justin4men=df,8,-1")
-		//.header("Cookie", "xhamsterlive_com_firstVisit=2020-03-13T11%3A23%3A13Z; xhamsterlive_com_affiliateId=2952b855a5c5a8ff0a377046f7949056e8391a3e01f0553be04ed1123b56e992; ABTest_ab_index_20191209_key=B; isVisitorsAgreementAccepted=1; alreadyVisited=1; baseAmpl=%7B%22up%22%3A%7B%22page%22%3A%22view%22%2C%22navigationParams%22%3A%7B%22limit%22%3A60%2C%22offset%22%3A0%7D%2C%22viewportParameters%22%3A%7B%22isFullscreen%22%3Afalse%7D%7D%7D; xhamsterlive_com_ABTest_recommended_key=B; guestWatchHistoryIds=; amplitude_id_19a23394adaadec51c3aeee36622058dxhamsterlive.com=eyJkZXZpY2VJZCI6IjY5MzkzY2EyLWE1N2EtNDk3ZS04NzczLTc4NDE3ODEzODNjZlIiLCJ1c2VySWQiOiIxMTMxMjE1NiIsIm9wdE91dCI6ZmFsc2UsInNlc3Npb25JZCI6MTU5MDc1NjU0NzIwOCwibGFzdEV2ZW50VGltZSI6MTU5MDc1ODMwMTU1MiwiZXZlbnRJZCI6MzksImlkZW50aWZ5SWQiOjcwMiwic2VxdWVuY2VOdW1iZXIiOjc0MX0=; G_ENABLED_IDPS=google; xhamsterlive_com_sessionId=1722312519cc53c150099ce43bfd236313dc47811410ff35e06372141870; xhamsterlive_com_sessionRemember=1; cookiesReminder=2020-04-28T11%3A56%3A05.253Z; __cfduid=d4f375713a721338ba8e9f4d8cf6409b01589468942; ABTest_ab_stripscore_viewers2575_key=A; crossDomainAuth=1; xhamsterlive_com_tagPreferred=men")
-
 		if (upgradeInsecureRequests) {
 			builder.header("Upgrade-Insecure-Requests", "1");
 		}
@@ -121,11 +162,24 @@ public final class NetworkUtils {
 
 		return response;
 	}
-	
+
+	/**
+	 * Returns the content encoding response header, if any.
+	 * @param response HttpResponse object.
+	 * @return Content encoding response header value or null if none.
+	 */
 	public static String getContentEncoding(HttpResponse<?> response) {
 		return response.headers().firstValue("Content-Encoding").orElse(null);
 	}
 	
+	/**
+	 * Decodes the input stream, depending on the given encoding.
+	 * Currently supported: br, gzip.
+	 * @param contentEncoding Content encoding value as defined by the server. Null or empty string returns the same input stream without modifications.
+	 * @param sourceStream Input stream to be decoded.
+	 * @return Input stream translated on-the-fly by a corresponding decoder.
+	 * @throws IOException in case of an I/O error.
+	 */
 	public static InputStream getInputStream(String contentEncoding, InputStream sourceStream) throws IOException {
 		if (contentEncoding == null || contentEncoding.length() == 0 || "identity".equals(contentEncoding)) {
 			return sourceStream;
@@ -138,8 +192,12 @@ public final class NetworkUtils {
 		}
 	}
 	
+	/**
+	 * Convenience function converting the given input stream to an UTF-8 buffered reader.
+	 * @param sourceStream Input stream to be converted.
+	 * @return BufferedReader on the given stream with UTF-8 encoding.
+	 */
 	public static BufferedReader getUtf8BufferedReader(InputStream sourceStream) {
 		return new BufferedReader(new InputStreamReader(sourceStream, StandardCharsets.UTF_8));
 	}
-
 }
